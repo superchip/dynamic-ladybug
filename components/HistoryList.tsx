@@ -78,6 +78,10 @@ export default function HistoryList({ entries, onUpdate }: Props) {
                     month: "short",
                     day: "numeric",
                     year: "numeric",
+                  })}{" "}
+                  {new Date(entry.date).toLocaleTimeString("en-US", {
+                    hour: "numeric",
+                    minute: "2-digit",
                   })}
                 </span>
                 <button

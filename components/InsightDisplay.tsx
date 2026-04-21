@@ -3,6 +3,25 @@
 import { motion } from "framer-motion";
 import { Emotion } from "@/types";
 
+function splitInsight(text: string): { body: string; empoweringBelief: string } {
+  const sentences = text
+    .trim()
+    .split(/(?<=[.!?])\s+/)
+    .map((s) => s.trim())
+    .filter(Boolean);
+
+  if (sentences.length <= 1) return { body: "", empoweringBelief: text.trim() };
+
+  const last = sentences[sentences.length - 1]
+    .replace(/^\*{1,2}[^*]*\*{1,2}:?\s*/g, "")
+    .trim();
+
+  return {
+    body: sentences.slice(0, -1).join(" "),
+    empoweringBelief: last,
+  };
+}
+
 type Props = {
   emotion: Emotion;
   belief: string;
@@ -22,6 +41,10 @@ export default function InsightDisplay({
   onReset,
   saved,
 }: Props) {
+  const { body, empoweringBelief } = isStreaming
+    ? { body: "", empoweringBelief: "" }
+    : splitInsight(insight);
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 30 }}
@@ -55,7 +78,7 @@ export default function InsightDisplay({
           New belief insight
         </p>
         <p className="text-white leading-relaxed text-base">
-          {insight}
+          {isStreaming ? insight : body}
           {isStreaming && (
             <span
               className="inline-block w-0.5 h-4 ml-0.5 align-middle animate-pulse rounded-full"
@@ -67,8 +90,30 @@ export default function InsightDisplay({
 
       {!isStreaming && insight && (
         <motion.div
+          initial={{ opacity: 0, scale: 0.96, y: 16 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
+          className="rounded-2xl px-6 py-5 relative"
+          style={{
+            background: `linear-gradient(135deg, ${emotion.color}1a, ${emotion.color}0d)`,
+            border: `1px solid ${emotion.color}66`,
+            boxShadow: `0 0 24px ${emotion.color}40, 0 0 8px ${emotion.color}28, inset 0 1px 0 ${emotion.color}22`,
+          }}
+        >
+          <p className="text-xs uppercase tracking-wide mb-3 font-semibold" style={{ color: `${emotion.color}dd` }}>
+            Your new belief
+          </p>
+          <p className="text-white font-medium leading-relaxed text-base">
+            {empoweringBelief}
+          </p>
+        </motion.div>
+      )}
+
+      {!isStreaming && insight && (
+        <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, delay: 0.25 }}
           className="flex gap-3"
         >
           {!saved ? (
