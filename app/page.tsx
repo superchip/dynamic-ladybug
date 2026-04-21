@@ -1,65 +1,142 @@
-import Image from "next/image";
+"use client";
+
+import { useState, useRef } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import CoverFlowPicker from "@/components/CoverFlowPicker";
+import BeliefForm from "@/components/BeliefForm";
+import InsightDisplay from "@/components/InsightDisplay";
+import { saveEntry } from "@/lib/storage";
+import { AppStep, Emotion } from "@/types";
 
 export default function Home() {
+  const [step, setStep] = useState<AppStep>("idle");
+  const [selectedIndex, setSelectedIndex] = useState(5);
+  const [selectedEmotion, setSelectedEmotion] = useState<Emotion | null>(null);
+  const [belief, setBelief] = useState("");
+  const [insight, setInsight] = useState("");
+  const [saved, setSaved] = useState(false);
+  const beliefRef = useRef<HTMLDivElement>(null);
+  const insightRef = useRef<HTMLDivElement>(null);
+
+  const handleEmotionConfirm = (emotion: Emotion) => {
+    setSelectedEmotion(emotion);
+    setStep("emotion-selected");
+    setTimeout(() => {
+      beliefRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+    }, 100);
+  };
+
+  const handleBeliefSubmit = async (beliefText: string) => {
+    setBelief(beliefText);
+    setInsight("");
+    setSaved(false);
+    setStep("submitting");
+
+    try {
+      const res = await fetch("/api/insight", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ emotion: selectedEmotion!.name, belief: beliefText }),
+      });
+
+      if (!res.ok) throw new Error("API error");
+
+      setStep("streaming");
+      setTimeout(() => {
+        insightRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+      }, 100);
+
+      const reader = res.body!.getReader();
+      const decoder = new TextDecoder();
+      let full = "";
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        full += decoder.decode(value, { stream: true });
+        setInsight(full);
+      }
+
+      setStep("complete");
+    } catch {
+      setStep("emotion-selected");
+    }
+  };
+
+  const handleSave = () => {
+    if (!selectedEmotion || !belief || !insight) return;
+    saveEntry({
+      id: crypto.randomUUID(),
+      date: new Date().toISOString(),
+      emotion: selectedEmotion.name,
+      emotionEmoji: selectedEmotion.emoji,
+      emotionColor: selectedEmotion.color,
+      belief,
+      insight,
+    });
+    setSaved(true);
+  };
+
+  const handleReset = () => {
+    setStep("idle");
+    setSelectedEmotion(null);
+    setBelief("");
+    setInsight("");
+    setSaved(false);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  const isLoading = step === "submitting";
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
+    <main className="min-h-screen flex flex-col items-center px-4 py-16 gap-20">
+      <section className="w-full flex flex-col items-center gap-10">
+        <motion.div
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="text-center"
+        >
+          <h1 className="text-4xl font-bold text-white tracking-tight">
+            What are you feeling?
           </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
+          <p className="text-white/40 mt-2 text-base">
+            Select the emotion that&apos;s present for you right now
           </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
+        </motion.div>
+
+        <CoverFlowPicker
+          selected={selectedIndex}
+          onSelect={setSelectedIndex}
+          onConfirm={handleEmotionConfirm}
+        />
+      </section>
+
+      <AnimatePresence>
+        {(step === "emotion-selected" || step === "submitting") && selectedEmotion && (
+          <section ref={beliefRef} className="w-full max-w-xl">
+            <BeliefForm
+              emotion={selectedEmotion}
+              onSubmit={handleBeliefSubmit}
+              isLoading={isLoading}
+              onBack={handleReset}
             />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
-    </div>
+          </section>
+        )}
+
+        {(step === "streaming" || step === "complete") && selectedEmotion && (
+          <section ref={insightRef} className="w-full max-w-xl">
+            <InsightDisplay
+              emotion={selectedEmotion}
+              belief={belief}
+              insight={insight}
+              isStreaming={step === "streaming"}
+              onSave={handleSave}
+              onReset={handleReset}
+              saved={saved}
+            />
+          </section>
+        )}
+      </AnimatePresence>
+    </main>
   );
 }
