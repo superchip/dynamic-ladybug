@@ -1,10 +1,10 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator } from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { C } from "../lib/colors";
 import { EmotionCategory } from "../lib/emotions";
-import { streamInsight } from "../lib/groq";
+import { streamInsight } from "../lib/api";
 import { saveEntry } from "../lib/storage";
 
 type GrowthInsight = {
@@ -40,31 +40,21 @@ export default function InsightScreen() {
   const [streaming, setStreaming] = useState(true);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState("");
-  const abortRef = useRef<AbortController | null>(null);
   const isGrowth = category === "growth";
 
   useEffect(() => {
-    const controller = new AbortController();
-    abortRef.current = controller;
-
-    (async () => {
-      try {
-        let buf = "";
-        await streamInsight(
-          emotion!,
-          belief!,
-          category!,
-          (chunk) => { buf += chunk; setRaw(buf); },
-          controller.signal
-        );
+    let buf = "";
+    streamInsight(
+      emotion!,
+      belief!,
+      category!,
+      (chunk) => { buf += chunk; setRaw(buf); }
+    )
+      .then(() => setStreaming(false))
+      .catch(() => {
+        setError("Something went wrong. Please try again.");
         setStreaming(false);
-      } catch (e: any) {
-        if (e?.name !== "AbortError") setError("Something went wrong. Please try again.");
-        setStreaming(false);
-      }
-    })();
-
-    return () => controller.abort();
+      });
   }, []);
 
   const handleSave = async () => {
