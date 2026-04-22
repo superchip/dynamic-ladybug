@@ -2,8 +2,38 @@
 
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { EmotionEntry } from "@/types";
+import { EmotionEntry, GrowthInsight } from "@/types";
 import { deleteEntry, clearEntries } from "@/lib/storage";
+
+function splitInsight(text: string): { body: string; empoweringBelief: string } {
+  const sentences = text
+    .trim()
+    .split(/(?<=[.!?])\s+/)
+    .map((s) => s.trim())
+    .filter(Boolean);
+
+  if (sentences.length <= 1) return { body: "", empoweringBelief: text.trim() };
+
+  const last = sentences[sentences.length - 1]
+    .replace(/^\*{1,2}[^*]*\*{1,2}:?\s*/g, "")
+    .trim();
+
+  return { body: sentences.slice(0, -1).join(" "), empoweringBelief: last };
+}
+
+function tryParseGrowth(text: string): GrowthInsight | null {
+  try {
+    const match = text.match(/\{[\s\S]*\}/);
+    if (!match) return null;
+    const parsed = JSON.parse(match[0]);
+    if (parsed.reflection && parsed.encouragement && parsed.empowerment_sentence) {
+      return parsed as GrowthInsight;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
 
 type Props = {
   entries: EmotionEntry[];
@@ -94,20 +124,82 @@ export default function HistoryList({ entries, onUpdate }: Props) {
               </div>
             </div>
 
-            <div>
-              <p className="text-xs text-white/35 uppercase tracking-wide mb-1">Belief</p>
-              <p className="text-white/50 text-sm italic">&ldquo;{entry.belief}&rdquo;</p>
-            </div>
+            {(() => {
+              const growth = tryParseGrowth(entry.insight);
+              return growth ? (
+                <>
+                  <div>
+                    <p className="text-xs text-white/35 uppercase tracking-wide mb-1">Reflection</p>
+                    <p className="text-white/50 text-sm italic">&ldquo;{entry.belief}&rdquo;</p>
+                  </div>
 
-            <div
-              className="rounded-xl px-4 py-3"
-              style={{ background: `${entry.emotionColor}12`, border: `1px solid ${entry.emotionColor}22` }}
-            >
-              <p className="text-xs uppercase tracking-wide mb-1 font-medium" style={{ color: `${entry.emotionColor}bb` }}>
-                Insight
-              </p>
-              <p className="text-white/80 text-sm leading-relaxed">{entry.insight}</p>
-            </div>
+                  <div
+                    className="rounded-xl px-4 py-3 flex flex-col gap-2"
+                    style={{ background: `${entry.emotionColor}12`, border: `1px solid ${entry.emotionColor}22` }}
+                  >
+                    <p className="text-xs uppercase tracking-wide mb-1 font-medium" style={{ color: `${entry.emotionColor}bb` }}>
+                      Your experience
+                    </p>
+                    <p className="text-white/80 text-sm leading-relaxed">{growth.reflection}</p>
+                    <p className="text-white/45 text-sm italic">{growth.encouragement}</p>
+                  </div>
+
+                  <div
+                    className="rounded-xl px-4 py-3"
+                    style={{
+                      background: `${entry.emotionColor}18`,
+                      border: `1px solid ${entry.emotionColor}55`,
+                      boxShadow: `0 0 12px ${entry.emotionColor}28`,
+                    }}
+                  >
+                    <p className="text-xs uppercase tracking-wide mb-1 font-semibold" style={{ color: `${entry.emotionColor}dd` }}>
+                      Your empowerment
+                    </p>
+                    <p className="text-white/90 text-sm font-medium leading-relaxed">{growth.empowerment_sentence}</p>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div>
+                    <p className="text-xs text-white/35 uppercase tracking-wide mb-1">Belief</p>
+                    <p className="text-white/50 text-sm italic">&ldquo;{entry.belief}&rdquo;</p>
+                  </div>
+
+                  {(() => {
+                    const { body, empoweringBelief } = splitInsight(entry.insight);
+                    return (
+                      <>
+                        <div
+                          className="rounded-xl px-4 py-3"
+                          style={{ background: `${entry.emotionColor}12`, border: `1px solid ${entry.emotionColor}22` }}
+                        >
+                          <p className="text-xs uppercase tracking-wide mb-1 font-medium" style={{ color: `${entry.emotionColor}bb` }}>
+                            Insight
+                          </p>
+                          <p className="text-white/80 text-sm leading-relaxed">{body || entry.insight}</p>
+                        </div>
+
+                        {empoweringBelief && body && (
+                          <div
+                            className="rounded-xl px-4 py-3"
+                            style={{
+                              background: `${entry.emotionColor}18`,
+                              border: `1px solid ${entry.emotionColor}55`,
+                              boxShadow: `0 0 12px ${entry.emotionColor}28`,
+                            }}
+                          >
+                            <p className="text-xs uppercase tracking-wide mb-1 font-semibold" style={{ color: `${entry.emotionColor}dd` }}>
+                              New belief
+                            </p>
+                            <p className="text-white/90 text-sm font-medium leading-relaxed">{empoweringBelief}</p>
+                          </div>
+                        )}
+                      </>
+                    );
+                  })()}
+                </>
+              );
+            })()}
           </motion.div>
         ))}
       </AnimatePresence>
