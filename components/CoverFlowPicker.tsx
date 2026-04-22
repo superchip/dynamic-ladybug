@@ -1,19 +1,26 @@
 "use client";
 
-import { useEffect, useRef, useCallback } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import { EMOTIONS } from "@/lib/emotions";
+import { useState, useEffect, useRef, useCallback } from "react";
+import { motion } from "framer-motion";
+import { EMOTION_BATCHES } from "@/lib/emotions";
 import { Emotion } from "@/types";
 
 type Props = {
-  selected: number;
-  onSelect: (index: number) => void;
   onConfirm: (emotion: Emotion) => void;
 };
 
-export default function CoverFlowPicker({ selected, onSelect, onConfirm }: Props) {
+export default function CoverFlowPicker({ onConfirm }: Props) {
+  const [batchIndex, setBatchIndex] = useState(0);
+  const [selected, setSelected] = useState(5);
   const containerRef = useRef<HTMLDivElement>(null);
   const touchStartX = useRef<number | null>(null);
+
+  const emotions = EMOTION_BATCHES[batchIndex].emotions;
+
+  const handleBatchSwitch = (idx: number) => {
+    setBatchIndex(idx);
+    setSelected(Math.floor(EMOTION_BATCHES[idx].emotions.length / 2));
+  };
 
   const getCardStyle = (offset: number) => {
     const absOffset = Math.abs(offset);
@@ -21,43 +28,25 @@ export default function CoverFlowPicker({ selected, onSelect, onConfirm }: Props
       return { scale: 1, rotateY: 0, opacity: 1, z: 100, x: 0 };
     }
     if (absOffset === 1) {
-      return {
-        scale: 0.8,
-        rotateY: offset > 0 ? -30 : 30,
-        opacity: 0.7,
-        z: 50,
-        x: offset * 20,
-      };
+      return { scale: 0.8, rotateY: offset > 0 ? -30 : 30, opacity: 0.7, z: 50, x: offset * 20 };
     }
     if (absOffset === 2) {
-      return {
-        scale: 0.65,
-        rotateY: offset > 0 ? -45 : 45,
-        opacity: 0.4,
-        z: 20,
-        x: offset * 15,
-      };
+      return { scale: 0.65, rotateY: offset > 0 ? -45 : 45, opacity: 0.4, z: 20, x: offset * 15 };
     }
-    return {
-      scale: 0.5,
-      rotateY: offset > 0 ? -55 : 55,
-      opacity: 0.15,
-      z: 0,
-      x: offset * 10,
-    };
+    return { scale: 0.5, rotateY: offset > 0 ? -55 : 55, opacity: 0.15, z: 0, x: offset * 10 };
   };
 
   const handleKeyDown = useCallback(
     (e: KeyboardEvent) => {
       if (e.key === "ArrowLeft") {
-        onSelect(Math.max(0, selected - 1));
+        setSelected((s) => Math.max(0, s - 1));
       } else if (e.key === "ArrowRight") {
-        onSelect(Math.min(EMOTIONS.length - 1, selected + 1));
+        setSelected((s) => Math.min(emotions.length - 1, s + 1));
       } else if (e.key === "Enter") {
-        onConfirm(EMOTIONS[selected]);
+        onConfirm(emotions[selected]);
       }
     },
-    [selected, onSelect, onConfirm]
+    [selected, emotions, onConfirm]
   );
 
   useEffect(() => {
@@ -74,9 +63,9 @@ export default function CoverFlowPicker({ selected, onSelect, onConfirm }: Props
     const diff = touchStartX.current - e.changedTouches[0].clientX;
     if (Math.abs(diff) > 40) {
       if (diff > 0) {
-        onSelect(Math.min(EMOTIONS.length - 1, selected + 1));
+        setSelected((s) => Math.min(emotions.length - 1, s + 1));
       } else {
-        onSelect(Math.max(0, selected - 1));
+        setSelected((s) => Math.max(0, s - 1));
       }
     }
     touchStartX.current = null;
@@ -86,15 +75,33 @@ export default function CoverFlowPicker({ selected, onSelect, onConfirm }: Props
 
   return (
     <div className="flex flex-col items-center gap-8 w-full select-none">
+      {/* Batch tabs */}
+      <div className="flex gap-1 p-1 rounded-2xl bg-white/5 border border-white/10">
+        {EMOTION_BATCHES.map((batch, idx) => (
+          <button
+            key={batch.label}
+            onClick={() => handleBatchSwitch(idx)}
+            className={`px-5 py-1.5 rounded-xl text-sm font-medium transition-all duration-200 ${
+              idx === batchIndex
+                ? "bg-white/15 text-white shadow-sm"
+                : "text-white/40 hover:text-white/70"
+            }`}
+          >
+            {batch.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Carousel */}
       <div
         ref={containerRef}
-        className="relative flex items-center justify-center w-full h-72 perspective-1000"
+        className="relative flex items-center justify-center w-full h-72"
         onTouchStart={handleTouchStart}
         onTouchEnd={handleTouchEnd}
         style={{ perspective: "1000px" }}
       >
         <div className="relative flex items-center justify-center w-full h-full">
-          {EMOTIONS.map((emotion, index) => {
+          {emotions.map((emotion, index) => {
             const offset = index - selected;
             if (Math.abs(offset) > visibleRange) return null;
 
@@ -103,7 +110,7 @@ export default function CoverFlowPicker({ selected, onSelect, onConfirm }: Props
 
             return (
               <motion.div
-                key={emotion.name}
+                key={`${batchIndex}-${emotion.name}`}
                 className="absolute cursor-pointer"
                 animate={{
                   scale: style.scale,
@@ -114,9 +121,7 @@ export default function CoverFlowPicker({ selected, onSelect, onConfirm }: Props
                 }}
                 transition={{ type: "spring", stiffness: 300, damping: 30 }}
                 onClick={() => {
-                  if (!isCenter) {
-                    onSelect(index);
-                  }
+                  if (!isCenter) setSelected(index);
                 }}
                 style={{ transformStyle: "preserve-3d" }}
               >
@@ -151,9 +156,10 @@ export default function CoverFlowPicker({ selected, onSelect, onConfirm }: Props
         </div>
       </div>
 
+      {/* Nav dots and arrows */}
       <div className="flex items-center gap-6">
         <button
-          onClick={() => onSelect(Math.max(0, selected - 1))}
+          onClick={() => setSelected((s) => Math.max(0, s - 1))}
           disabled={selected === 0}
           className="w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 disabled:opacity-20 disabled:cursor-not-allowed transition flex items-center justify-center text-white text-lg"
         >
@@ -161,10 +167,10 @@ export default function CoverFlowPicker({ selected, onSelect, onConfirm }: Props
         </button>
 
         <div className="flex gap-1.5">
-          {EMOTIONS.map((_, i) => (
+          {emotions.map((_, i) => (
             <button
               key={i}
-              onClick={() => onSelect(i)}
+              onClick={() => setSelected(i)}
               className={`rounded-full transition-all duration-200 ${
                 i === selected ? "w-5 h-2 bg-white" : "w-2 h-2 bg-white/30"
               }`}
@@ -173,8 +179,8 @@ export default function CoverFlowPicker({ selected, onSelect, onConfirm }: Props
         </div>
 
         <button
-          onClick={() => onSelect(Math.min(EMOTIONS.length - 1, selected + 1))}
-          disabled={selected === EMOTIONS.length - 1}
+          onClick={() => setSelected((s) => Math.min(emotions.length - 1, s + 1))}
+          disabled={selected === emotions.length - 1}
           className="w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 disabled:opacity-20 disabled:cursor-not-allowed transition flex items-center justify-center text-white text-lg"
         >
           →
@@ -184,11 +190,11 @@ export default function CoverFlowPicker({ selected, onSelect, onConfirm }: Props
       <motion.button
         whileHover={{ scale: 1.04 }}
         whileTap={{ scale: 0.97 }}
-        onClick={() => onConfirm(EMOTIONS[selected])}
+        onClick={() => onConfirm(emotions[selected])}
         className="px-8 py-3 rounded-2xl font-semibold text-white text-base shadow-lg transition"
-        style={{ background: EMOTIONS[selected].color }}
+        style={{ background: emotions[selected].color }}
       >
-        I feel {EMOTIONS[selected].name} →
+        I feel {emotions[selected].name} →
       </motion.button>
     </div>
   );

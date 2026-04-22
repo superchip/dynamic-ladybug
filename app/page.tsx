@@ -10,7 +10,6 @@ import { AppStep, Emotion } from "@/types";
 
 export default function Home() {
   const [step, setStep] = useState<AppStep>("idle");
-  const [selectedIndex, setSelectedIndex] = useState(5);
   const [selectedEmotion, setSelectedEmotion] = useState<Emotion | null>(null);
   const [belief, setBelief] = useState("");
   const [insight, setInsight] = useState("");
@@ -104,11 +103,7 @@ export default function Home() {
           </p>
         </motion.div>
 
-        <CoverFlowPicker
-          selected={selectedIndex}
-          onSelect={setSelectedIndex}
-          onConfirm={handleEmotionConfirm}
-        />
+        <CoverFlowPicker onConfirm={handleEmotionConfirm} />
       </section>
 
       <AnimatePresence>
