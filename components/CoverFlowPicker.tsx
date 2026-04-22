@@ -3,10 +3,10 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { motion } from "framer-motion";
 import { EMOTION_BATCHES } from "@/lib/emotions";
-import { Emotion } from "@/types";
+import { Emotion, EmotionCategory } from "@/types";
 
 type Props = {
-  onConfirm: (emotion: Emotion) => void;
+  onConfirm: (emotion: Emotion, category: EmotionCategory) => void;
 };
 
 export default function CoverFlowPicker({ onConfirm }: Props) {
@@ -43,7 +43,7 @@ export default function CoverFlowPicker({ onConfirm }: Props) {
       } else if (e.key === "ArrowRight") {
         setSelected((s) => Math.min(emotions.length - 1, s + 1));
       } else if (e.key === "Enter") {
-        onConfirm(emotions[selected]);
+        onConfirm(emotions[selected], batchIndex === 0 ? "challenging" : "growth");
       }
     },
     [selected, emotions, onConfirm]
@@ -190,7 +190,7 @@ export default function CoverFlowPicker({ onConfirm }: Props) {
       <motion.button
         whileHover={{ scale: 1.04 }}
         whileTap={{ scale: 0.97 }}
-        onClick={() => onConfirm(emotions[selected])}
+        onClick={() => onConfirm(emotions[selected], batchIndex === 0 ? "challenging" : "growth")}
         className="px-8 py-3 rounded-2xl font-semibold text-white text-base shadow-lg transition"
         style={{ background: emotions[selected].color }}
       >

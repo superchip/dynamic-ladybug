@@ -6,19 +6,21 @@ import CoverFlowPicker from "@/components/CoverFlowPicker";
 import BeliefForm from "@/components/BeliefForm";
 import InsightDisplay from "@/components/InsightDisplay";
 import { saveEntry } from "@/lib/storage";
-import { AppStep, Emotion } from "@/types";
+import { AppStep, Emotion, EmotionCategory } from "@/types";
 
 export default function Home() {
   const [step, setStep] = useState<AppStep>("idle");
   const [selectedEmotion, setSelectedEmotion] = useState<Emotion | null>(null);
+  const [category, setCategory] = useState<EmotionCategory>("challenging");
   const [belief, setBelief] = useState("");
   const [insight, setInsight] = useState("");
   const [saved, setSaved] = useState(false);
   const beliefRef = useRef<HTMLDivElement>(null);
   const insightRef = useRef<HTMLDivElement>(null);
 
-  const handleEmotionConfirm = (emotion: Emotion) => {
+  const handleEmotionConfirm = (emotion: Emotion, cat: EmotionCategory) => {
     setSelectedEmotion(emotion);
+    setCategory(cat);
     setStep("emotion-selected");
     setTimeout(() => {
       beliefRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
@@ -35,7 +37,7 @@ export default function Home() {
       const res = await fetch("/api/insight", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ emotion: selectedEmotion!.name, belief: beliefText }),
+        body: JSON.stringify({ emotion: selectedEmotion!.name, belief: beliefText, category }),
       });
 
       if (!res.ok) throw new Error("API error");
@@ -79,6 +81,7 @@ export default function Home() {
   const handleReset = () => {
     setStep("idle");
     setSelectedEmotion(null);
+    setCategory("challenging");
     setBelief("");
     setInsight("");
     setSaved(false);
@@ -111,6 +114,7 @@ export default function Home() {
           <section ref={beliefRef} className="w-full max-w-xl">
             <BeliefForm
               emotion={selectedEmotion}
+              category={category}
               onSubmit={handleBeliefSubmit}
               isLoading={isLoading}
               onBack={handleReset}
@@ -124,6 +128,7 @@ export default function Home() {
               emotion={selectedEmotion}
               belief={belief}
               insight={insight}
+              category={category}
               isStreaming={step === "streaming"}
               onSave={handleSave}
               onReset={handleReset}

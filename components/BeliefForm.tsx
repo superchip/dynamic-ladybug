@@ -2,16 +2,18 @@
 
 import { useState, useEffect, useRef } from "react";
 import { motion } from "framer-motion";
-import { Emotion } from "@/types";
+import { Emotion, EmotionCategory } from "@/types";
 
 type Props = {
   emotion: Emotion;
+  category: EmotionCategory;
   onSubmit: (belief: string) => void;
   isLoading: boolean;
   onBack: () => void;
 };
 
-export default function BeliefForm({ emotion, onSubmit, isLoading, onBack }: Props) {
+export default function BeliefForm({ emotion, category, onSubmit, isLoading, onBack }: Props) {
+  const isGrowth = category === "growth";
   const [belief, setBelief] = useState("");
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -50,13 +52,17 @@ export default function BeliefForm({ emotion, onSubmit, isLoading, onBack }: Pro
       <form onSubmit={handleSubmit} className="flex flex-col gap-5">
         <div>
           <label className="block text-white/60 text-sm mb-2 font-medium tracking-wide uppercase text-xs">
-            What belief is driving this feeling?
+            {isGrowth ? "What are you noticing with this feeling?" : "What belief is driving this feeling?"}
           </label>
           <textarea
             ref={textareaRef}
             value={belief}
             onChange={(e) => setBelief(e.target.value)}
-            placeholder={`e.g. "I'm not good enough", "Nobody really cares about me", "I always mess things up"…`}
+            placeholder={
+              isGrowth
+                ? `e.g. "I feel this warmth but I'm not sure I deserve it", "This peace is unfamiliar to me"…`
+                : `e.g. "I'm not good enough", "Nobody really cares about me", "I always mess things up"…`
+            }
             rows={4}
             disabled={isLoading}
             className="w-full rounded-2xl bg-white/8 border border-white/15 text-white placeholder-white/25 px-5 py-4 text-base resize-none focus:outline-none focus:border-white/40 focus:bg-white/12 transition disabled:opacity-50"
@@ -75,10 +81,10 @@ export default function BeliefForm({ emotion, onSubmit, isLoading, onBack }: Pro
           {isLoading ? (
             <span className="flex items-center justify-center gap-2">
               <span className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
-              Finding your insight…
+              {isGrowth ? "Receiving your insight…" : "Finding your insight…"}
             </span>
           ) : (
-            "Reframe this belief →"
+            isGrowth ? "Deepen this feeling →" : "Reframe this belief →"
           )}
         </motion.button>
       </form>

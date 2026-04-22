@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Emotion } from "@/types";
+import { Emotion, EmotionCategory, GrowthInsight } from "@/types";
 
 function splitInsight(text: string): { body: string; empoweringBelief: string } {
   const sentences = text
@@ -22,10 +22,25 @@ function splitInsight(text: string): { body: string; empoweringBelief: string } 
   };
 }
 
+function parseGrowthInsight(text: string): GrowthInsight | null {
+  try {
+    const match = text.match(/\{[\s\S]*\}/);
+    if (!match) return null;
+    const parsed = JSON.parse(match[0]);
+    if (parsed.reflection && parsed.encouragement && parsed.empowerment_sentence) {
+      return parsed as GrowthInsight;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
 type Props = {
   emotion: Emotion;
   belief: string;
   insight: string;
+  category: EmotionCategory;
   isStreaming: boolean;
   onSave: () => void;
   onReset: () => void;
@@ -36,14 +51,17 @@ export default function InsightDisplay({
   emotion,
   belief,
   insight,
+  category,
   isStreaming,
   onSave,
   onReset,
   saved,
 }: Props) {
-  const { body, empoweringBelief } = isStreaming
-    ? { body: "", empoweringBelief: "" }
-    : splitInsight(insight);
+  const isGrowth = category === "growth";
+
+  const growthData = !isStreaming && isGrowth ? parseGrowthInsight(insight) : null;
+  const { body, empoweringBelief } =
+    !isStreaming && !isGrowth ? splitInsight(insight) : { body: "", empoweringBelief: "" };
 
   return (
     <motion.div
@@ -63,10 +81,13 @@ export default function InsightDisplay({
       </div>
 
       <div className="rounded-2xl bg-white/5 border border-white/10 px-5 py-4">
-        <p className="text-xs text-white/40 uppercase tracking-wide mb-1 font-medium">Your belief</p>
+        <p className="text-xs text-white/40 uppercase tracking-wide mb-1 font-medium">
+          {isGrowth ? "Your reflection" : "Your belief"}
+        </p>
         <p className="text-white/60 text-sm italic">&ldquo;{belief}&rdquo;</p>
       </div>
 
+      {/* Main insight box */}
       <div
         className="rounded-2xl px-6 py-5 relative overflow-hidden"
         style={{
@@ -75,19 +96,38 @@ export default function InsightDisplay({
         }}
       >
         <p className="text-xs uppercase tracking-wide mb-3 font-medium" style={{ color: `${emotion.color}cc` }}>
-          New belief insight
+          {isGrowth ? "Your experience" : "New belief insight"}
         </p>
-        <p className="text-white leading-relaxed text-base">
-          {isStreaming ? insight : body}
-          {isStreaming && (
-            <span
-              className="inline-block w-0.5 h-4 ml-0.5 align-middle animate-pulse rounded-full"
-              style={{ background: emotion.color }}
-            />
-          )}
-        </p>
+
+        {isStreaming ? (
+          isGrowth ? (
+            <div className="flex items-center gap-3 text-white/50 text-sm">
+              <span
+                className="inline-block w-0.5 h-4 align-middle animate-pulse rounded-full"
+                style={{ background: emotion.color }}
+              />
+              Receiving your insight…
+            </div>
+          ) : (
+            <p className="text-white leading-relaxed text-base">
+              {insight}
+              <span
+                className="inline-block w-0.5 h-4 ml-0.5 align-middle animate-pulse rounded-full"
+                style={{ background: emotion.color }}
+              />
+            </p>
+          )
+        ) : isGrowth && growthData ? (
+          <>
+            <p className="text-white leading-relaxed text-base">{growthData.reflection}</p>
+            <p className="mt-3 text-white/60 text-sm italic">{growthData.encouragement}</p>
+          </>
+        ) : (
+          <p className="text-white leading-relaxed text-base">{body}</p>
+        )}
       </div>
 
+      {/* Empowerment glow box */}
       {!isStreaming && insight && (
         <motion.div
           initial={{ opacity: 0, scale: 0.96, y: 16 }}
@@ -101,10 +141,10 @@ export default function InsightDisplay({
           }}
         >
           <p className="text-xs uppercase tracking-wide mb-3 font-semibold" style={{ color: `${emotion.color}dd` }}>
-            Your new belief
+            {isGrowth ? "Your empowerment" : "Your new belief"}
           </p>
           <p className="text-white font-medium leading-relaxed text-base">
-            {empoweringBelief}
+            {isGrowth && growthData ? growthData.empowerment_sentence : empoweringBelief}
           </p>
         </motion.div>
       )}
