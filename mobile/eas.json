@@ -21,7 +21,7 @@
         "buildType": "apk"
       },
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://your-production-domain.com"
+        "EXPO_PUBLIC_API_URL": "https://dynamicladybug-t3n25szqk-rons-projects-9d303db0.vercel.app"
       }
     },
     "production": {
@@ -30,7 +30,7 @@
         "buildType": "app-bundle"
       },
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://your-production-domain.com"
+        "EXPO_PUBLIC_API_URL": "https://dynamicladybug-t3n25szqk-rons-projects-9d303db0.vercel.app"
       }
     }
   },
