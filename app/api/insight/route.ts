@@ -107,7 +107,7 @@ export async function POST(request: Request) {
 
   const stream = await client.chat.completions.create({
     model: GROQ_MODEL,
-    max_tokens: 512,
+    max_tokens: 2048,
     stream: true,
     messages: [
       { role: "system", content: systemPrompt },
