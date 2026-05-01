@@ -166,7 +166,7 @@ export default function CoverFlowPicker({ onConfirm }: Props) {
         {/* Orbital chips */}
         {emotions.map((e, i) => {
           const offset = i - selectedIndex;
-          const visible = Math.abs(offset) >= 1 && Math.abs(offset) <= 4;
+          const visible = Math.abs(offset) <= 4;
           if (!visible) return null;
 
           const angle = offset * 12;
