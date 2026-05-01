@@ -1,37 +1,39 @@
 "use client";
 
-import { useState, useRef } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import AuroraBackground from "@/components/AuroraBackground";
+import AuroraNav from "@/components/AuroraNav";
 import CoverFlowPicker from "@/components/CoverFlowPicker";
 import BeliefForm from "@/components/BeliefForm";
 import InsightDisplay from "@/components/InsightDisplay";
 import { saveEntry } from "@/lib/storage";
-import { AppStep, Emotion, EmotionCategory } from "@/types";
+import { Emotion, EmotionCategory } from "@/types";
+
+type Page = "home" | "belief" | "insight";
 
 export default function Home() {
-  const [step, setStep] = useState<AppStep>("idle");
+  const router = useRouter();
+  const [page, setPage] = useState<Page>("home");
   const [selectedEmotion, setSelectedEmotion] = useState<Emotion | null>(null);
   const [category, setCategory] = useState<EmotionCategory>("challenging");
   const [belief, setBelief] = useState("");
   const [insight, setInsight] = useState("");
+  const [isStreaming, setIsStreaming] = useState(false);
   const [saved, setSaved] = useState(false);
-  const beliefRef = useRef<HTMLDivElement>(null);
-  const insightRef = useRef<HTMLDivElement>(null);
 
   const handleEmotionConfirm = (emotion: Emotion, cat: EmotionCategory) => {
     setSelectedEmotion(emotion);
     setCategory(cat);
-    setStep("emotion-selected");
-    setTimeout(() => {
-      beliefRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
-    }, 100);
+    setPage("belief");
   };
 
   const handleBeliefSubmit = async (beliefText: string) => {
     setBelief(beliefText);
     setInsight("");
     setSaved(false);
-    setStep("submitting");
+    setIsStreaming(true);
+    setPage("insight");
 
     try {
       const res = await fetch("/api/insight", {
@@ -39,28 +41,20 @@ export default function Home() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ emotion: selectedEmotion!.name, belief: beliefText, category }),
       });
-
       if (!res.ok) throw new Error("API error");
-
-      setStep("streaming");
-      setTimeout(() => {
-        insightRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
-      }, 100);
-
       const reader = res.body!.getReader();
       const decoder = new TextDecoder();
       let full = "";
-
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
         full += decoder.decode(value, { stream: true });
         setInsight(full);
       }
-
-      setStep("complete");
     } catch {
-      setStep("emotion-selected");
+      setPage("belief");
+    } finally {
+      setIsStreaming(false);
     }
   };
 
@@ -79,64 +73,52 @@ export default function Home() {
   };
 
   const handleReset = () => {
-    setStep("idle");
+    setPage("home");
     setSelectedEmotion(null);
     setCategory("challenging");
     setBelief("");
     setInsight("");
     setSaved(false);
-    window.scrollTo({ top: 0, behavior: "smooth" });
+    setIsStreaming(false);
   };
 
-  const isLoading = step === "submitting";
+  const handleNav = (target: "home" | "history") => {
+    if (target === "home") handleReset();
+    else router.push("/history");
+  };
+
+  const bgColor = selectedEmotion?.color ?? "#7c5cff";
 
   return (
-    <main className="min-h-screen flex flex-col items-center px-4 py-16 gap-20">
-      <section className="w-full flex flex-col items-center gap-10">
-        <motion.div
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="text-center"
-        >
-          <h1 className="text-4xl font-bold text-white tracking-tight">
-            What are you feeling?
-          </h1>
-          <p className="text-white/40 mt-2 text-base">
-            Select the emotion that&apos;s present for you right now
-          </p>
-        </motion.div>
+    <div style={{ position: "fixed", inset: 0, background: "var(--bg-0)", overflow: "hidden" }}>
+      <AuroraBackground color={bgColor} intensity={page === "insight" ? 0.8 : page === "belief" ? 0.7 : 1} />
+      <AuroraNav page="home" onNav={handleNav} />
 
+      {page === "home" && (
         <CoverFlowPicker onConfirm={handleEmotionConfirm} />
-      </section>
+      )}
 
-      <AnimatePresence>
-        {(step === "emotion-selected" || step === "submitting") && selectedEmotion && (
-          <section ref={beliefRef} className="w-full max-w-xl">
-            <BeliefForm
-              emotion={selectedEmotion}
-              category={category}
-              onSubmit={handleBeliefSubmit}
-              isLoading={isLoading}
-              onBack={handleReset}
-            />
-          </section>
-        )}
+      {page === "belief" && selectedEmotion && (
+        <BeliefForm
+          emotion={selectedEmotion}
+          category={category}
+          onSubmit={handleBeliefSubmit}
+          onBack={() => setPage("home")}
+        />
+      )}
 
-        {(step === "streaming" || step === "complete") && selectedEmotion && (
-          <section ref={insightRef} className="w-full max-w-xl">
-            <InsightDisplay
-              emotion={selectedEmotion}
-              belief={belief}
-              insight={insight}
-              category={category}
-              isStreaming={step === "streaming"}
-              onSave={handleSave}
-              onReset={handleReset}
-              saved={saved}
-            />
-          </section>
-        )}
-      </AnimatePresence>
-    </main>
+      {page === "insight" && selectedEmotion && (
+        <InsightDisplay
+          emotion={selectedEmotion}
+          belief={belief}
+          insight={insight}
+          category={category}
+          isStreaming={isStreaming}
+          onSave={handleSave}
+          onReset={handleReset}
+          saved={saved}
+        />
+      )}
+    </div>
   );
 }
