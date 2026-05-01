@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import AuroraBackground from "@/components/AuroraBackground";
 import AuroraNav from "@/components/AuroraNav";
@@ -88,6 +88,8 @@ export default function Home() {
     else router.push("/history");
   };
 
+  const handleBrowse = useCallback((e: Emotion) => setBrowseColor(e.color), []);
+
   const bgColor = selectedEmotion?.color ?? browseColor ?? "#7c5cff";
 
   return (
@@ -98,7 +100,7 @@ export default function Home() {
       {page === "home" && (
         <CoverFlowPicker
           onConfirm={handleEmotionConfirm}
-          onBrowse={(e) => setBrowseColor(e.color)}
+          onBrowse={handleBrowse}
         />
       )}
 

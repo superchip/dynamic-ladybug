@@ -12,6 +12,7 @@ type Props = {
 export default function CoverFlowPicker({ onConfirm, onBrowse }: Props) {
   const [batchIndex, setBatchIndex] = useState(0);
   const [selectedIndex, setSelectedIndex] = useState(5);
+  const [cardHovered, setCardHovered] = useState(false);
   const touchStartX = useRef<number | null>(null);
 
   const emotions = EMOTION_BATCHES[batchIndex].emotions;
@@ -42,6 +43,9 @@ export default function CoverFlowPicker({ onConfirm, onBrowse }: Props) {
 
   const handleTouchStart = (e: React.TouchEvent) => {
     touchStartX.current = e.touches[0].clientX;
+    // Prime the Vibration API while the touchstart user-activation is live;
+    // without this, Chrome gates vibrate() on a prior button-click activation.
+    navigator.vibrate?.(0);
   };
 
   const handleTouchEnd = (e: React.TouchEvent) => {
@@ -67,11 +71,12 @@ export default function CoverFlowPicker({ onConfirm, onBrowse }: Props) {
         display: "flex",
         flexDirection: "column",
         alignItems: "center",
-        paddingTop: 96,
+        paddingTop: "clamp(60px, 8vh, 96px)",
+        overflowY: "auto",
       }}
     >
       {/* Header */}
-      <div style={{ textAlign: "center", marginBottom: 36 }}>
+      <div style={{ textAlign: "center", marginBottom: "clamp(20px, 3vh, 36px)" }}>
         <div
           style={{
             fontFamily: "var(--font-mono)",
@@ -88,7 +93,7 @@ export default function CoverFlowPicker({ onConfirm, onBrowse }: Props) {
         <h1
           style={{
             fontFamily: "var(--font-display)",
-            fontSize: 52,
+            fontSize: "clamp(36px, 7vh, 52px)",
             fontWeight: 600,
             letterSpacing: -1.5,
             margin: 0,
@@ -122,7 +127,7 @@ export default function CoverFlowPicker({ onConfirm, onBrowse }: Props) {
           backdropFilter: "blur(20px)",
           WebkitBackdropFilter: "blur(20px)",
           border: "1px solid var(--hairline)",
-          marginBottom: 52,
+          marginBottom: "clamp(24px, 4.5vh, 52px)",
         }}
       >
         {EMOTION_BATCHES.map((batch, idx) => (
@@ -148,19 +153,23 @@ export default function CoverFlowPicker({ onConfirm, onBrowse }: Props) {
 
       {/* Orbital wheel */}
       <div
-        style={{ position: "relative", width: 560, height: 340, marginBottom: 24 }}
+        style={{ position: "relative", width: 560, height: "clamp(260px, 36vh, 340px)", marginBottom: "clamp(14px, 2.2vh, 24px)" }}
         onTouchStart={handleTouchStart}
         onTouchEnd={handleTouchEnd}
       >
-        {/* Central card */}
-        <div
+        {/* Central card — tap to confirm */}
+        <button
+          aria-label={`Continue with ${sel.name}`}
+          onClick={() => onConfirm(sel, batchIndex === 0 ? "challenging" : "growth")}
+          onMouseEnter={() => setCardHovered(true)}
+          onMouseLeave={() => setCardHovered(false)}
           style={{
             position: "absolute",
             left: "50%",
             top: "50%",
-            transform: "translate(-50%, -50%)",
+            transform: `translate(-50%, -50%) scale(${cardHovered ? 1.03 : 1})`,
             width: 210,
-            height: 250,
+            height: "clamp(155px, 27vh, 250px)",
             borderRadius: 32,
             background: `linear-gradient(160deg, ${sel.color}cc, ${sel.color}66)`,
             boxShadow: `0 30px 80px ${sel.color}55, inset 0 1px 0 rgba(255,255,255,0.3)`,
@@ -172,16 +181,27 @@ export default function CoverFlowPicker({ onConfirm, onBrowse }: Props) {
             gap: 12,
             backdropFilter: "blur(20px)",
             zIndex: 5,
-            transition: "background 0.4s ease, box-shadow 0.4s ease",
+            padding: 0,
+            color: "var(--fg)",
+            cursor: "pointer",
+            transition: "background 0.4s ease, box-shadow 0.4s ease, transform 0.2s cubic-bezier(0.22, 1, 0.36, 1)",
           }}
         >
-          <div style={{ fontSize: 80, lineHeight: 1, filter: "drop-shadow(0 4px 12px rgba(0,0,0,0.3))" }}>
+          <div
+            key={sel.name}
+            style={{
+              fontSize: "clamp(50px, 9vh, 80px)",
+              lineHeight: 1,
+              filter: "drop-shadow(0 4px 12px rgba(0,0,0,0.3))",
+              animation: "emoji-pop 0.35s cubic-bezier(0.22, 1, 0.36, 1)",
+            }}
+          >
             {sel.emoji}
           </div>
           <div
             style={{
               fontFamily: "var(--font-display)",
-              fontSize: 22,
+              fontSize: "clamp(15px, 2.2vh, 22px)",
               fontWeight: 600,
               letterSpacing: -0.3,
               color: "white",
@@ -189,7 +209,18 @@ export default function CoverFlowPicker({ onConfirm, onBrowse }: Props) {
           >
             {sel.name}
           </div>
-        </div>
+          <div
+            style={{
+              fontFamily: "var(--font-mono)",
+              fontSize: 9,
+              letterSpacing: 2,
+              textTransform: "uppercase",
+              color: "rgba(255,255,255,0.5)",
+            }}
+          >
+            Tap to continue →
+          </div>
+        </button>
 
         {/* Orbital chips */}
         {emotions.map((e, i) => {
@@ -234,31 +265,6 @@ export default function CoverFlowPicker({ onConfirm, onBrowse }: Props) {
         })}
       </div>
 
-      {/* Confirm button */}
-      <button
-        onClick={() => onConfirm(sel, batchIndex === 0 ? "challenging" : "growth")}
-        style={{
-          padding: "14px 28px",
-          borderRadius: 999,
-          background: `linear-gradient(180deg, ${sel.color}, ${sel.color}cc)`,
-          border: "1px solid rgba(255,255,255,0.2)",
-          color: "white",
-          fontFamily: "var(--font-display)",
-          fontWeight: 600,
-          fontSize: 15,
-          letterSpacing: -0.1,
-          boxShadow: `0 10px 30px ${sel.color}66, inset 0 1px 0 rgba(255,255,255,0.3)`,
-          cursor: "pointer",
-          display: "flex",
-          alignItems: "center",
-          gap: 8,
-          transition: "background 0.3s, box-shadow 0.3s",
-        }}
-      >
-        Continue with {sel.name}
-        <span style={{ opacity: 0.7 }}>→</span>
-      </button>
-
       <div
         style={{
           marginTop: 16,
@@ -267,9 +273,10 @@ export default function CoverFlowPicker({ onConfirm, onBrowse }: Props) {
           color: "var(--fg-mute)",
           letterSpacing: 1,
           textTransform: "uppercase",
+          paddingBottom: 24,
         }}
       >
-        ← → to browse · Return to confirm
+        ← → to browse · Tap {sel.name} to continue
       </div>
     </div>
   );
