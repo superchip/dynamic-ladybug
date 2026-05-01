@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { EMOTION_BATCHES } from "@/lib/emotions";
 import { Emotion, EmotionCategory } from "@/types";
 
@@ -12,6 +12,7 @@ type Props = {
 export default function CoverFlowPicker({ onConfirm, onBrowse }: Props) {
   const [batchIndex, setBatchIndex] = useState(0);
   const [selectedIndex, setSelectedIndex] = useState(5);
+  const touchStartX = useRef<number | null>(null);
 
   const emotions = EMOTION_BATCHES[batchIndex].emotions;
   const sel = emotions[selectedIndex];
@@ -38,6 +39,23 @@ export default function CoverFlowPicker({ onConfirm, onBrowse }: Props) {
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [handleKeyDown]);
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    touchStartX.current = e.touches[0].clientX;
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    if (touchStartX.current === null) return;
+    const delta = touchStartX.current - e.changedTouches[0].clientX;
+    if (Math.abs(delta) > 30) {
+      setSelectedIndex((i) =>
+        delta > 0
+          ? (i + 1) % emotions.length
+          : (i - 1 + emotions.length) % emotions.length
+      );
+    }
+    touchStartX.current = null;
+  };
 
   return (
     <div
@@ -103,7 +121,7 @@ export default function CoverFlowPicker({ onConfirm, onBrowse }: Props) {
           backdropFilter: "blur(20px)",
           WebkitBackdropFilter: "blur(20px)",
           border: "1px solid var(--hairline)",
-          marginBottom: 28,
+          marginBottom: 52,
         }}
       >
         {EMOTION_BATCHES.map((batch, idx) => (
@@ -128,7 +146,11 @@ export default function CoverFlowPicker({ onConfirm, onBrowse }: Props) {
       </div>
 
       {/* Orbital wheel */}
-      <div style={{ position: "relative", width: 560, height: 340, marginBottom: 24 }}>
+      <div
+        style={{ position: "relative", width: 560, height: 340, marginBottom: 24 }}
+        onTouchStart={handleTouchStart}
+        onTouchEnd={handleTouchEnd}
+      >
         {/* Central card */}
         <div
           style={{
