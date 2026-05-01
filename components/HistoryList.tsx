@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
 import { EmotionEntry, GrowthInsight } from "@/types";
 import { deleteEntry, clearEntries } from "@/lib/storage";
 
@@ -11,13 +10,10 @@ function splitInsight(text: string): { body: string; empoweringBelief: string } 
     .split(/(?<=[.!?])\s+/)
     .map((s) => s.trim())
     .filter(Boolean);
-
   if (sentences.length <= 1) return { body: "", empoweringBelief: text.trim() };
-
   const last = sentences[sentences.length - 1]
     .replace(/^\*{1,2}[^*]*\*{1,2}:?\s*/g, "")
     .trim();
-
   return { body: sentences.slice(0, -1).join(" "), empoweringBelief: last };
 }
 
@@ -26,9 +22,7 @@ function tryParseGrowth(text: string): GrowthInsight | null {
     const match = text.match(/\{[\s\S]*\}/);
     if (!match) return null;
     const parsed = JSON.parse(match[0]);
-    if (parsed.reflection && parsed.encouragement && parsed.empowerment_sentence) {
-      return parsed as GrowthInsight;
-    }
+    if (parsed.reflection && parsed.encouragement && parsed.empowerment_sentence) return parsed as GrowthInsight;
     return null;
   } catch {
     return null;
@@ -60,149 +54,196 @@ export default function HistoryList({ entries, onUpdate }: Props) {
 
   if (entries.length === 0) {
     return (
-      <div className="text-center py-20 text-white/30">
-        <p className="text-5xl mb-4">🌱</p>
-        <p className="text-lg">No entries yet.</p>
-        <p className="text-sm mt-1">Your saved insights will appear here.</p>
+      <div
+        style={{
+          textAlign: "center",
+          padding: "80px 0",
+          color: "var(--fg-mute)",
+          fontFamily: "var(--font-text)",
+        }}
+      >
+        <p style={{ fontSize: 48, margin: "0 0 16px" }}>🌱</p>
+        <p style={{ fontSize: 18, margin: "0 0 6px", color: "var(--fg-dim)" }}>No entries yet.</p>
+        <p style={{ fontSize: 14 }}>Your saved insights will appear here.</p>
       </div>
     );
   }
 
   return (
-    <div className="flex flex-col gap-4">
-      <div className="flex justify-between items-center mb-2">
-        <p className="text-white/40 text-sm">{entries.length} {entries.length === 1 ? "entry" : "entries"}</p>
+    <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
+        <span style={{ fontFamily: "var(--font-mono)", fontSize: 10, letterSpacing: 1.5, textTransform: "uppercase", color: "var(--fg-mute)" }}>
+          {entries.length} {entries.length === 1 ? "entry" : "entries"}
+        </span>
         <button
           onClick={handleClearAll}
           onBlur={() => setConfirmClear(false)}
-          className="text-sm text-white/30 hover:text-red-400 transition"
+          style={{
+            background: "transparent",
+            border: "none",
+            fontFamily: "var(--font-text)",
+            fontSize: 12,
+            color: confirmClear ? "#f43f5e" : "var(--fg-mute)",
+            cursor: "pointer",
+          }}
         >
           {confirmClear ? "Tap again to confirm" : "Clear all"}
         </button>
       </div>
 
-      <AnimatePresence initial={false}>
-        {entries.map((entry) => (
-          <motion.div
+      {entries.map((entry) => {
+        const growth = tryParseGrowth(entry.insight);
+        const { body, empoweringBelief } = !growth ? splitInsight(entry.insight) : { body: "", empoweringBelief: "" };
+        const displayBody = growth ? growth.reflection : (body || entry.insight);
+        const displayNewBelief = growth ? growth.empowerment_sentence : empoweringBelief;
+
+        return (
+          <div
             key={entry.id}
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, height: 0, marginBottom: 0 }}
-            transition={{ duration: 0.2 }}
-            className="rounded-2xl bg-white/5 border border-white/10 p-5 flex flex-col gap-3"
+            style={{
+              background: "var(--material)",
+              border: "1px solid var(--hairline)",
+              backdropFilter: "blur(40px) saturate(140%)",
+              WebkitBackdropFilter: "blur(40px) saturate(140%)",
+              borderRadius: "var(--r-lg)",
+              boxShadow: "inset 0 1px 0 rgba(255,255,255,0.08), 0 20px 60px -20px rgba(0,0,0,0.4)",
+              padding: 22,
+            }}
           >
-            <div className="flex items-center justify-between">
-              <div
-                className="flex items-center gap-2 px-3 py-1 rounded-full text-white text-sm font-medium"
+            {/* Header row */}
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                marginBottom: 14,
+              }}
+            >
+              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <div
+                  style={{
+                    width: 36,
+                    height: 36,
+                    borderRadius: 12,
+                    background: `linear-gradient(160deg, ${entry.emotionColor}cc, ${entry.emotionColor}66)`,
+                    display: "grid",
+                    placeItems: "center",
+                    fontSize: 18,
+                    boxShadow: `0 6px 16px ${entry.emotionColor}55`,
+                  }}
+                >
+                  {entry.emotionEmoji}
+                </div>
+                <div>
+                  <div
+                    style={{
+                      fontFamily: "var(--font-display)",
+                      fontSize: 14,
+                      fontWeight: 600,
+                      color: "var(--fg)",
+                    }}
+                  >
+                    {entry.emotion}
+                  </div>
+                  <div
+                    style={{
+                      fontFamily: "var(--font-mono)",
+                      fontSize: 10,
+                      letterSpacing: 1,
+                      textTransform: "uppercase",
+                      color: "var(--fg-mute)",
+                    }}
+                  >
+                    {new Date(entry.date).toLocaleDateString("en-US", { month: "short", day: "numeric" })} ·{" "}
+                    {new Date(entry.date).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}
+                  </div>
+                </div>
+              </div>
+              <button
+                onClick={() => handleDelete(entry.id)}
                 style={{
-                  background: `${entry.emotionColor}33`,
+                  background: "transparent",
+                  border: "1px solid var(--hairline)",
+                  width: 28,
+                  height: 28,
+                  borderRadius: 8,
+                  color: "var(--fg-mute)",
+                  fontSize: 14,
+                  cursor: "pointer",
+                  display: "grid",
+                  placeItems: "center",
+                }}
+                title="Delete"
+              >
+                ×
+              </button>
+            </div>
+
+            {/* Belief */}
+            <p
+              style={{
+                fontFamily: "var(--font-serif)",
+                fontStyle: "italic",
+                fontSize: 15,
+                color: "var(--fg-dim)",
+                margin: "0 0 10px",
+                lineHeight: 1.4,
+              }}
+            >
+              &ldquo;{entry.belief}&rdquo;
+            </p>
+
+            {/* Body */}
+            <p
+              style={{
+                fontFamily: "var(--font-text)",
+                fontSize: 14,
+                lineHeight: 1.55,
+                margin: "0 0 12px",
+                color: "var(--fg)",
+              }}
+            >
+              {displayBody}
+            </p>
+
+            {/* New belief chip */}
+            {displayNewBelief && (
+              <div
+                style={{
+                  padding: "12px 16px",
+                  borderRadius: 14,
+                  background: `${entry.emotionColor}1a`,
                   border: `1px solid ${entry.emotionColor}55`,
                 }}
               >
-                <span>{entry.emotionEmoji}</span>
-                <span>{entry.emotion}</span>
-              </div>
-              <div className="flex items-center gap-3">
-                <span className="text-white/25 text-xs">
-                  {new Date(entry.date).toLocaleDateString("en-US", {
-                    month: "short",
-                    day: "numeric",
-                    year: "numeric",
-                  })}{" "}
-                  {new Date(entry.date).toLocaleTimeString("en-US", {
-                    hour: "numeric",
-                    minute: "2-digit",
-                  })}
-                </span>
-                <button
-                  onClick={() => handleDelete(entry.id)}
-                  className="text-white/20 hover:text-red-400 transition text-sm"
-                  title="Delete"
+                <div
+                  style={{
+                    fontFamily: "var(--font-mono)",
+                    fontSize: 9,
+                    letterSpacing: 1.5,
+                    textTransform: "uppercase",
+                    color: entry.emotionColor,
+                    marginBottom: 4,
+                  }}
                 >
-                  ×
-                </button>
+                  New belief
+                </div>
+                <p
+                  style={{
+                    fontFamily: "var(--font-serif)",
+                    fontSize: 15,
+                    margin: 0,
+                    lineHeight: 1.4,
+                    color: "var(--fg)",
+                  }}
+                >
+                  {displayNewBelief}
+                </p>
               </div>
-            </div>
-
-            {(() => {
-              const growth = tryParseGrowth(entry.insight);
-              return growth ? (
-                <>
-                  <div>
-                    <p className="text-xs text-white/35 uppercase tracking-wide mb-1">Reflection</p>
-                    <p className="text-white/50 text-sm italic">&ldquo;{entry.belief}&rdquo;</p>
-                  </div>
-
-                  <div
-                    className="rounded-xl px-4 py-3 flex flex-col gap-2"
-                    style={{ background: `${entry.emotionColor}12`, border: `1px solid ${entry.emotionColor}22` }}
-                  >
-                    <p className="text-xs uppercase tracking-wide mb-1 font-medium" style={{ color: `${entry.emotionColor}bb` }}>
-                      Your experience
-                    </p>
-                    <p className="text-white/80 text-sm leading-relaxed">{growth.reflection}</p>
-                    <p className="text-white/45 text-sm italic">{growth.encouragement}</p>
-                  </div>
-
-                  <div
-                    className="rounded-xl px-4 py-3"
-                    style={{
-                      background: `${entry.emotionColor}18`,
-                      border: `1px solid ${entry.emotionColor}55`,
-                      boxShadow: `0 0 12px ${entry.emotionColor}28`,
-                    }}
-                  >
-                    <p className="text-xs uppercase tracking-wide mb-1 font-semibold" style={{ color: `${entry.emotionColor}dd` }}>
-                      Your empowerment
-                    </p>
-                    <p className="text-white/90 text-sm font-medium leading-relaxed">{growth.empowerment_sentence}</p>
-                  </div>
-                </>
-              ) : (
-                <>
-                  <div>
-                    <p className="text-xs text-white/35 uppercase tracking-wide mb-1">Belief</p>
-                    <p className="text-white/50 text-sm italic">&ldquo;{entry.belief}&rdquo;</p>
-                  </div>
-
-                  {(() => {
-                    const { body, empoweringBelief } = splitInsight(entry.insight);
-                    return (
-                      <>
-                        <div
-                          className="rounded-xl px-4 py-3"
-                          style={{ background: `${entry.emotionColor}12`, border: `1px solid ${entry.emotionColor}22` }}
-                        >
-                          <p className="text-xs uppercase tracking-wide mb-1 font-medium" style={{ color: `${entry.emotionColor}bb` }}>
-                            Insight
-                          </p>
-                          <p className="text-white/80 text-sm leading-relaxed">{body || entry.insight}</p>
-                        </div>
-
-                        {empoweringBelief && body && (
-                          <div
-                            className="rounded-xl px-4 py-3"
-                            style={{
-                              background: `${entry.emotionColor}18`,
-                              border: `1px solid ${entry.emotionColor}55`,
-                              boxShadow: `0 0 12px ${entry.emotionColor}28`,
-                            }}
-                          >
-                            <p className="text-xs uppercase tracking-wide mb-1 font-semibold" style={{ color: `${entry.emotionColor}dd` }}>
-                              New belief
-                            </p>
-                            <p className="text-white/90 text-sm font-medium leading-relaxed">{empoweringBelief}</p>
-                          </div>
-                        )}
-                      </>
-                    );
-                  })()}
-                </>
-              );
-            })()}
-          </motion.div>
-        ))}
-      </AnimatePresence>
+            )}
+          </div>
+        );
+      })}
     </div>
   );
 }

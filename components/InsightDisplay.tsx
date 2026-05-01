@@ -1,6 +1,5 @@
 "use client";
 
-import { motion } from "framer-motion";
 import { Emotion, EmotionCategory, GrowthInsight } from "@/types";
 
 function splitInsight(text: string): { body: string; empoweringBelief: string } {
@@ -9,17 +8,11 @@ function splitInsight(text: string): { body: string; empoweringBelief: string } 
     .split(/(?<=[.!?])\s+/)
     .map((s) => s.trim())
     .filter(Boolean);
-
   if (sentences.length <= 1) return { body: "", empoweringBelief: text.trim() };
-
   const last = sentences[sentences.length - 1]
     .replace(/^\*{1,2}[^*]*\*{1,2}:?\s*/g, "")
     .trim();
-
-  return {
-    body: sentences.slice(0, -1).join(" "),
-    empoweringBelief: last,
-  };
+  return { body: sentences.slice(0, -1).join(" "), empoweringBelief: last };
 }
 
 function parseGrowthInsight(text: string): GrowthInsight | null {
@@ -27,9 +20,7 @@ function parseGrowthInsight(text: string): GrowthInsight | null {
     const match = text.match(/\{[\s\S]*\}/);
     if (!match) return null;
     const parsed = JSON.parse(match[0]);
-    if (parsed.reflection && parsed.encouragement && parsed.empowerment_sentence) {
-      return parsed as GrowthInsight;
-    }
+    if (parsed.reflection && parsed.encouragement && parsed.empowerment_sentence) return parsed as GrowthInsight;
     return null;
   } catch {
     return null;
@@ -58,125 +49,288 @@ export default function InsightDisplay({
   saved,
 }: Props) {
   const isGrowth = category === "growth";
-
   const growthData = !isStreaming && isGrowth ? parseGrowthInsight(insight) : null;
   const { body, empoweringBelief } =
     !isStreaming && !isGrowth ? splitInsight(insight) : { body: "", empoweringBelief: "" };
 
+  const displayBody = isGrowth
+    ? growthData
+      ? growthData.reflection
+      : insight
+    : body || insight;
+
+  const displayNewBelief = isGrowth
+    ? growthData?.empowerment_sentence ?? ""
+    : empoweringBelief;
+
+  const now = new Date();
+  const timeStr = now.toLocaleDateString("en-US", { weekday: "short" }) + " · " +
+    now.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
+
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 30 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.5 }}
-      className="w-full max-w-xl mx-auto flex flex-col gap-6"
+    <div
+      style={{
+        position: "absolute",
+        inset: 0,
+        zIndex: 10,
+        overflowY: "auto",
+        padding: "100px 32px 48px",
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+      }}
     >
-      <div className="flex items-center gap-2">
-        <div
-          className="flex items-center gap-2 px-4 py-1.5 rounded-full text-white text-sm font-medium"
-          style={{ background: `${emotion.color}44`, border: `1px solid ${emotion.color}66` }}
-        >
-          <span>{emotion.emoji}</span>
-          <span>{emotion.name}</span>
+      <div style={{ width: "100%", maxWidth: 640, display: "flex", flexDirection: "column", gap: 16 }}>
+        {/* Emotion + time row */}
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
+              padding: "6px 14px",
+              borderRadius: 999,
+              background: `${emotion.color}22`,
+              border: `1px solid ${emotion.color}55`,
+            }}
+          >
+            <span>{emotion.emoji}</span>
+            <span style={{ fontFamily: "var(--font-text)", fontSize: 13, fontWeight: 500, color: "var(--fg)" }}>
+              {emotion.name}
+            </span>
+          </div>
+          <span
+            style={{
+              fontFamily: "var(--font-mono)",
+              fontSize: 10,
+              color: "var(--fg-mute)",
+              letterSpacing: 1,
+              textTransform: "uppercase",
+            }}
+          >
+            {timeStr}
+          </span>
         </div>
-      </div>
 
-      <div className="rounded-2xl bg-white/5 border border-white/10 px-5 py-4">
-        <p className="text-xs text-white/40 uppercase tracking-wide mb-1 font-medium">
-          {isGrowth ? "Your reflection" : "Your belief"}
-        </p>
-        <p className="text-white/60 text-sm italic">&ldquo;{belief}&rdquo;</p>
-      </div>
-
-      {/* Main insight box */}
-      <div
-        className="rounded-2xl px-6 py-5 relative overflow-hidden"
-        style={{
-          background: `linear-gradient(135deg, ${emotion.color}18, ${emotion.color}08)`,
-          border: `1px solid ${emotion.color}33`,
-        }}
-      >
-        <p className="text-xs uppercase tracking-wide mb-3 font-medium" style={{ color: `${emotion.color}cc` }}>
-          {isGrowth ? "Your experience" : "New belief insight"}
-        </p>
-
-        {isStreaming ? (
-          isGrowth ? (
-            <div className="flex items-center gap-3 text-white/50 text-sm">
-              <span
-                className="inline-block w-0.5 h-4 align-middle animate-pulse rounded-full"
-                style={{ background: emotion.color }}
-              />
-              Receiving your insight…
-            </div>
-          ) : (
-            <p className="text-white leading-relaxed text-base">
-              {insight}
-              <span
-                className="inline-block w-0.5 h-4 ml-0.5 align-middle animate-pulse rounded-full"
-                style={{ background: emotion.color }}
-              />
-            </p>
-          )
-        ) : isGrowth && growthData ? (
-          <>
-            <p className="text-white leading-relaxed text-base">{growthData.reflection}</p>
-            <p className="mt-3 text-white/60 text-sm italic">{growthData.encouragement}</p>
-          </>
-        ) : (
-          <p className="text-white leading-relaxed text-base">{body}</p>
-        )}
-      </div>
-
-      {/* Empowerment glow box */}
-      {!isStreaming && insight && (
-        <motion.div
-          initial={{ opacity: 0, scale: 0.96, y: 16 }}
-          animate={{ opacity: 1, scale: 1, y: 0 }}
-          transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
-          className="rounded-2xl px-6 py-5 relative"
+        {/* Belief card */}
+        <div
           style={{
-            background: `linear-gradient(135deg, ${emotion.color}1a, ${emotion.color}0d)`,
-            border: `1px solid ${emotion.color}66`,
-            boxShadow: `0 0 24px ${emotion.color}40, 0 0 8px ${emotion.color}28, inset 0 1px 0 ${emotion.color}22`,
+            background: "var(--material)",
+            border: "1px solid var(--hairline)",
+            backdropFilter: "blur(40px) saturate(140%)",
+            WebkitBackdropFilter: "blur(40px) saturate(140%)",
+            borderRadius: "var(--r-lg)",
+            boxShadow: "inset 0 1px 0 rgba(255,255,255,0.08), 0 30px 80px -30px rgba(0,0,0,0.5)",
+            padding: 22,
           }}
         >
-          <p className="text-xs uppercase tracking-wide mb-3 font-semibold" style={{ color: `${emotion.color}dd` }}>
-            {isGrowth ? "Your empowerment" : "Your new belief"}
-          </p>
-          <p className="text-white font-medium leading-relaxed text-base">
-            {isGrowth && growthData ? growthData.empowerment_sentence : empoweringBelief}
-          </p>
-        </motion.div>
-      )}
-
-      {!isStreaming && insight && (
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4, delay: 0.25 }}
-          className="flex gap-3"
-        >
-          {!saved ? (
-            <button
-              onClick={onSave}
-              className="flex-1 py-3 rounded-2xl font-semibold text-white text-sm shadow transition"
-              style={{ background: emotion.color }}
-            >
-              Save to history
-            </button>
-          ) : (
-            <div className="flex-1 py-3 rounded-2xl text-center text-white/50 text-sm border border-white/10">
-              Saved ✓
-            </div>
-          )}
-          <button
-            onClick={onReset}
-            className="flex-1 py-3 rounded-2xl font-semibold text-white/60 text-sm border border-white/15 hover:bg-white/5 transition"
+          <div
+            style={{
+              fontFamily: "var(--font-mono)",
+              fontSize: 10,
+              letterSpacing: 1.5,
+              textTransform: "uppercase",
+              color: "var(--fg-mute)",
+              marginBottom: 6,
+            }}
           >
-            Start over
-          </button>
-        </motion.div>
-      )}
-    </motion.div>
+            {isGrowth ? "Your reflection" : "The belief"}
+          </div>
+          <p
+            style={{
+              fontFamily: "var(--font-serif)",
+              fontStyle: "italic",
+              fontSize: 18,
+              lineHeight: 1.45,
+              color: "var(--fg-dim)",
+              margin: 0,
+            }}
+          >
+            &ldquo;{belief}&rdquo;
+          </p>
+        </div>
+
+        {/* Reflection card */}
+        <div
+          style={{
+            position: "relative",
+            padding: 28,
+            borderRadius: "var(--r-lg)",
+            background: `linear-gradient(160deg, ${emotion.color}1a, ${emotion.color}06)`,
+            border: `1px solid ${emotion.color}33`,
+            backdropFilter: "blur(40px)",
+          }}
+        >
+          <div
+            style={{
+              fontFamily: "var(--font-mono)",
+              fontSize: 10,
+              letterSpacing: 1.5,
+              textTransform: "uppercase",
+              marginBottom: 12,
+              color: emotion.color,
+            }}
+          >
+            {isGrowth ? "Your experience" : "Reflection"}
+          </div>
+
+          {isStreaming && !insight ? (
+            <div style={{ display: "flex", alignItems: "center", gap: 10, color: "var(--fg-mute)" }}>
+              <span
+                style={{
+                  display: "inline-block",
+                  width: 2,
+                  height: 18,
+                  background: emotion.color,
+                  animation: "pulse 1s ease-in-out infinite",
+                  borderRadius: 1,
+                }}
+              />
+              <span style={{ fontFamily: "var(--font-text)", fontSize: 14 }}>Finding your insight…</span>
+            </div>
+          ) : (
+            <p
+              style={{
+                fontFamily: "var(--font-text)",
+                fontSize: 17,
+                lineHeight: 1.55,
+                margin: 0,
+                color: "var(--fg)",
+              }}
+            >
+              {displayBody}
+              {isStreaming && (
+                <span
+                  style={{
+                    display: "inline-block",
+                    width: 2,
+                    height: 18,
+                    marginLeft: 4,
+                    verticalAlign: "middle",
+                    background: emotion.color,
+                    animation: "pulse 1s ease-in-out infinite",
+                    borderRadius: 1,
+                  }}
+                />
+              )}
+            </p>
+          )}
+
+          {isGrowth && growthData?.encouragement && !isStreaming && (
+            <p
+              style={{
+                fontFamily: "var(--font-text)",
+                fontSize: 14,
+                fontStyle: "italic",
+                color: "var(--fg-dim)",
+                margin: "12px 0 0",
+                lineHeight: 1.5,
+              }}
+            >
+              {growthData.encouragement}
+            </p>
+          )}
+        </div>
+
+        {/* New belief glow card */}
+        {!isStreaming && displayNewBelief && (
+          <div
+            style={{
+              position: "relative",
+              padding: 28,
+              borderRadius: "var(--r-lg)",
+              background: `linear-gradient(160deg, ${emotion.color}30, ${emotion.color}10)`,
+              border: `1px solid ${emotion.color}88`,
+              boxShadow: `0 0 60px ${emotion.color}44, inset 0 1px 0 rgba(255,255,255,0.15)`,
+              backdropFilter: "blur(40px)",
+            }}
+          >
+            <div
+              style={{
+                fontFamily: "var(--font-mono)",
+                fontSize: 10,
+                letterSpacing: 1.5,
+                textTransform: "uppercase",
+                marginBottom: 12,
+                color: emotion.color,
+              }}
+            >
+              {isGrowth ? "Your empowerment" : "A truer belief"}
+            </div>
+            <p
+              style={{
+                fontFamily: "var(--font-serif)",
+                fontSize: 24,
+                lineHeight: 1.35,
+                margin: 0,
+                fontWeight: 400,
+                letterSpacing: -0.3,
+                color: "var(--fg)",
+              }}
+            >
+              {displayNewBelief}
+            </p>
+          </div>
+        )}
+
+        {/* Action buttons */}
+        {!isStreaming && insight && (
+          <div style={{ display: "flex", gap: 10, marginTop: 4 }}>
+            {saved ? (
+              <div
+                style={{
+                  flex: 1,
+                  padding: "14px 20px",
+                  borderRadius: 16,
+                  border: "1px solid var(--hairline)",
+                  color: "var(--fg-mute)",
+                  fontFamily: "var(--font-display)",
+                  fontSize: 14,
+                  textAlign: "center",
+                }}
+              >
+                Saved ✓
+              </div>
+            ) : (
+              <button
+                onClick={onSave}
+                style={{
+                  flex: 1,
+                  padding: "14px 20px",
+                  borderRadius: 16,
+                  background: `linear-gradient(180deg, ${emotion.color}, ${emotion.color}cc)`,
+                  border: "1px solid rgba(255,255,255,0.18)",
+                  color: "white",
+                  fontFamily: "var(--font-display)",
+                  fontWeight: 600,
+                  fontSize: 14,
+                  boxShadow: `0 10px 24px ${emotion.color}55, inset 0 1px 0 rgba(255,255,255,0.25)`,
+                  cursor: "pointer",
+                }}
+              >
+                Save to history
+              </button>
+            )}
+            <button
+              onClick={onReset}
+              style={{
+                flex: 1,
+                padding: "14px 20px",
+                borderRadius: 16,
+                background: "rgba(255,255,255,0.06)",
+                border: "1px solid var(--hairline-strong)",
+                color: "var(--fg)",
+                fontFamily: "var(--font-display)",
+                fontWeight: 500,
+                fontSize: 14,
+                cursor: "pointer",
+              }}
+            >
+              Start over
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
   );
 }
