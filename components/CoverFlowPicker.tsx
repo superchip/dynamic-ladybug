@@ -48,6 +48,7 @@ export default function CoverFlowPicker({ onConfirm, onBrowse }: Props) {
     if (touchStartX.current === null) return;
     const delta = touchStartX.current - e.changedTouches[0].clientX;
     if (Math.abs(delta) > 30) {
+      navigator.vibrate?.(8);
       setSelectedIndex((i) =>
         delta > 0
           ? (i + 1) % emotions.length
