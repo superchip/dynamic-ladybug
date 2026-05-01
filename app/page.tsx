@@ -21,6 +21,7 @@ export default function Home() {
   const [insight, setInsight] = useState("");
   const [isStreaming, setIsStreaming] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [browseColor, setBrowseColor] = useState<string | null>(null);
 
   const handleEmotionConfirm = (emotion: Emotion, cat: EmotionCategory) => {
     setSelectedEmotion(emotion);
@@ -87,7 +88,7 @@ export default function Home() {
     else router.push("/history");
   };
 
-  const bgColor = selectedEmotion?.color ?? "#7c5cff";
+  const bgColor = selectedEmotion?.color ?? browseColor ?? "#7c5cff";
 
   return (
     <div style={{ position: "fixed", inset: 0, background: "var(--bg-0)", overflow: "hidden" }}>
@@ -95,7 +96,10 @@ export default function Home() {
       <AuroraNav page="home" onNav={handleNav} />
 
       {page === "home" && (
-        <CoverFlowPicker onConfirm={handleEmotionConfirm} />
+        <CoverFlowPicker
+          onConfirm={handleEmotionConfirm}
+          onBrowse={(e) => setBrowseColor(e.color)}
+        />
       )}
 
       {page === "belief" && selectedEmotion && (

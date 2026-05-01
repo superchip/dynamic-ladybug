@@ -6,14 +6,19 @@ import { Emotion, EmotionCategory } from "@/types";
 
 type Props = {
   onConfirm: (emotion: Emotion, category: EmotionCategory) => void;
+  onBrowse?: (emotion: Emotion) => void;
 };
 
-export default function CoverFlowPicker({ onConfirm }: Props) {
+export default function CoverFlowPicker({ onConfirm, onBrowse }: Props) {
   const [batchIndex, setBatchIndex] = useState(0);
   const [selectedIndex, setSelectedIndex] = useState(5);
 
   const emotions = EMOTION_BATCHES[batchIndex].emotions;
   const sel = emotions[selectedIndex];
+
+  useEffect(() => {
+    onBrowse?.(sel);
+  }, [sel, onBrowse]);
 
   const handleBatchSwitch = (idx: number) => {
     setBatchIndex(idx);
